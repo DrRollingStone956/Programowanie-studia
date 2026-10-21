@@ -1,0 +1,1 @@
+print("Zadania dodane do python_typing :)")
