@@ -1,6 +1,7 @@
-def full_name(name, surname):
-    return "Cześć " + name + " " + surname + " !"
+def wyswietlListe(lista):
+    for i in lista:
+        print(i)
 
 
-witaj = full_name("gabriel", "kania")
-print(witaj)
+listaImion = ["adam", "mirek", "pawel", "leszek", "rafal"]
+wyswietlListe(listaImion)

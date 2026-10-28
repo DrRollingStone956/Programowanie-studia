@@ -1,9 +1,10 @@
-def check_if_even(x):
-    return x % 2 == 0
+listaLiczb2 = list(range(10))
 
 
-my_number = check_if_even(43)
-if my_number:
-    print("Liczba parzysta")
-else:
-    print("Liczba nieparzysta")
+def wyswietlParzyste(lista):
+    for i in lista:
+        if i % 2 == 0:
+            print(i)
+
+
+wyswietlParzyste(listaLiczb2)

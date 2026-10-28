@@ -1,8 +1,6 @@
-def function(x, y, z):
-    if x + y >= z:
-        return True
-    else:
-        return False
+def wyswietlcodrugi(lista):
+    for i in range(0, len(lista), 2):
+        print(lista[i])
 
 
-print(function(4, 6, 11))
+wyswietlcodrugi(listaLiczb2)
