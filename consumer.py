@@ -1,70 +1,57 @@
-import csv
 import os
+import sqlite3
 import time
-from filelock import FileLock
 
-FILE_PATH = "tasks.csv"
-LOCK_PATH = "tasks.csv.lock"
+DB_PATH = "tasks.db"
 
 
 def process_task():
-    if not os.path.exists(FILE_PATH):
+    if not os.path.exists(DB_PATH):
         return False
 
-    lock = FileLock(LOCK_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=20.0)
+    cursor = conn.cursor()
 
     task_to_do = None
-    rows = []
 
-    with lock:
-        with open(FILE_PATH, mode="r", newline="", encoding="utf-8") as f:
-            reader = list(csv.reader(f))
-            if not reader:
-                return False
+    try:
+        cursor.execute("BEGIN IMMEDIATE")
+        cursor.execute(
+            "SELECT id, task_name FROM tasks WHERE status = 'pending' LIMIT 1"
+        )
+        row = cursor.fetchone()
 
-            header = reader[0]
-            data = reader[1:]
-
-        updated = False
-        for row in data:
-            if not updated and row[2] == "pending":
-                row[2] = "in_progress"
-                task_to_do = row
-                updated = True
-            rows.append(row)
-
-        if updated:
-            with open(FILE_PATH, mode="w", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                writer.writerow(header)
-                writer.writerows(rows)
+        if row:
+            task_id, task_name = row
+            cursor.execute(
+                "UPDATE tasks SET status = 'in_progress' WHERE id = ?",
+                (task_id,)
+            )
+            conn.commit()
+            task_to_do = (task_id, task_name)
+        else:
+            conn.rollback()
+    except sqlite3.OperationalError as e:
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
 
     if not task_to_do:
         return False
 
-    task_id, task_name, _ = task_to_do
+    task_id, task_name = task_to_do
     print(
         f"[Consumer {os.getpid()}] Rozpoczęto: {task_name}"
         f"(ID: {task_id}) - status: in_progress"
     )
     time.sleep(30)
 
-    with lock:
-        with open(FILE_PATH, mode="r", newline="", encoding="utf-8") as f:
-            reader = list(csv.reader(f))
-            header = reader[0]
-            data = reader[1:]
-
-        new_rows = []
-        for row in data:
-            if row[0] == task_id:
-                row[2] = "done"
-            new_rows.append(row)
-
-        with open(FILE_PATH, mode="w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            writer.writerow(header)
-            writer.writerows(new_rows)
+    conn = sqlite3.connect(DB_PATH, timeout=20.0)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE tasks SET status = 'done' WHERE id = ?", (task_id,))
+    conn.commit()
+    conn.close()
 
     print(
         f"[Consumer {os.getpid()}] Zakończono: {task_name}"

@@ -1,31 +1,38 @@
-import csv
-import os
+import sqlite3
 import sys
 import uuid
-from filelock import FileLock
 
-FILE_PATH = "tasks.csv"
-LOCK_PATH = "tasks.csv.lock"
+DB_PATH = "tasks.db"
+
+
+def init_db():
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS tasks (
+                id TEXT PRIMARY KEY,
+                task_name TEXT NOT NULL,
+                status TEXT NOT NULL
+            )
+        """
+        )
+        conn.commit()
 
 
 def add_task():
-    file_exists = os.path.exists(FILE_PATH)
+    init_db()
+    task_id = str(uuid.uuid4())[:8]
+    task_name = f"Rozmowa telefoniczna {task_id}"
 
-    lock = FileLock(LOCK_PATH)
-    with lock:
-        with open(FILE_PATH, mode="a", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            if not file_exists:
-                writer.writerow(["id", "task_name", "status"])
-
-            task_id = str(uuid.uuid4())[:8]
-            writer.writerow(
-                [task_id, f"Rozmowa telefoniczna {task_id}", "pending"]
-                )
-            print(
-                f"[Producer] Dodano zadanie:"
-                f"{task_id} ze statusem 'pending'"
-                )
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO tasks (id, task_name, status) VALUES (?, ?, ?)",
+            (task_id, task_name, "pending"),
+        )
+        conn.commit()
+    print(f"[Producer] Dodano zadanie: {task_id} ze statusem 'pending'")
 
 
 if __name__ == "__main__":
